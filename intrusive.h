@@ -1,33 +1,35 @@
 #ifndef BOOST_JSON_INTRUSIVE_H
 #define BOOST_JSON_INTRUSIVE_H
 
-#include </home/roy/Scaricati/boost_1_87_0/boost/json/fwd.hpp>
-#include <boost/system/error_code.hpp>
-#include <boost/version.hpp>
-#include <format>
+#include "json/include/boost/json/fwd.hpp"
 #include <string>
 #include <vector>
+#include <optional>
 
 struct BOOST_JSON_INTRUSIVE {
 	struct Key {
 		const char* key = nullptr;
-		std::size_t pos = -1;
+		int         pos = -1;
 		Key(const char* k_);
-		Key(std::size_t p_);
+		Key(int p_);
 	};
 	using PathVec = std::vector<Key>;
 
-	BOOST_JSON_INTRUSIVE();
-	static void               push(const Key key);
-	static void               inc();
-	static void               pop();
-	static std::string        composePath();
-	//static std::string        composeMessage(boost::json::value* original_, boost::json::value target);
 	static inline std::string message;
 	static inline PathVec     path;
 
-	static inline boost::system::error_code error;
-	static inline boost::json::value*       original = nullptr;
+	BOOST_JSON_INTRUSIVE();
+	static std::string getMessage();
+	static void        reset();
+	static void        push(const Key key);
+	static void        inc();
+	static void        pop();
+	static std::string composePath();
+
+	static std::optional<boost::json::value> subtractJson(const boost::json::value& first, const boost::json::value& second, PathVec& path);
+	static std::optional<boost::json::value> subtractJson(const boost::json::object& first, const boost::json::object& second, PathVec& path);
+	static std::optional<boost::json::value> subtractJson(const boost::json::array& first, const boost::json::array& second, PathVec& path);
+	static std::optional<boost::json::value> subtractJson(const boost::json::value& first, const boost::json::value& second);
 };
 
 #ifndef BOOST_JSON_INTRUSIVE_INDEX_INC
@@ -46,7 +48,5 @@ struct BOOST_JSON_INTRUSIVE {
 #define BOOST_JSON_INTRUSIVE_MESSAGE(x) (BOOST_JSON_INTRUSIVE::message = (x));
 #endif
 
-boost::json::object subtractJson(const boost::json::object& first, const boost::json::object& second, std::string path = {});
-
-#include </home/roy/Scaricati/boost_1_87_0/boost/json/detail/value_to.hpp>
+#include "json/include/boost/json/detail/value_to.hpp"
 #endif // BOOST_JSON_INTRUSIVE_H

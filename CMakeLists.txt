@@ -5,7 +5,7 @@ project(BoostJsonIntrusive LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-include_directories(/home/roy/Scaricati/boost_1_87_0/)
+include_directories("json/include")
 
 add_executable(BoostJsonIntrusive main.cpp
 	src.cpp
@@ -18,7 +18,23 @@ install(TARGETS BoostJsonIntrusive
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
+if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(BoostJsonIntrusive
+        PUBLIC
+            -fsanitize=address
+            -fno-omit-frame-pointer
+    )
+    target_link_options(BoostJsonIntrusive
+        PRIVATE
+            -fsanitize=address
+    )
+    target_link_libraries(BoostJsonIntrusive
+        PRIVATE
+            asan
+    )
+endif()
+
 target_link_libraries(BoostJsonIntrusive
-	 PUBLIC
-		  fmt
+    PUBLIC
+        fmt
 )

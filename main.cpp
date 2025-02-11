@@ -1,11 +1,11 @@
 #include "intrusive.h"
 #include "util.h"
 
-#include </home/roy/Scaricati/boost_1_87_0/boost/json.hpp>
-#include </home/roy/Scaricati/boost_1_87_0/boost/json/detail/value_to.hpp>
+#include "json/include/boost/json.hpp"
+//here so i just easier to click and go inside
+#include "json/include/boost/json/detail/value_to.hpp"
 
 #include <boost/describe.hpp>
-//#include <boost/describe/enum.hpp>
 #include <boost/mp11.hpp>
 #include <boost/mp11/algorithm.hpp>
 
@@ -16,146 +16,122 @@
 using namespace std;
 namespace bj = boost::json;
 
-class Ip_address {
-      public:
-	Ip_address() = default;
-
-	Ip_address(
-	    unsigned char oct1,
-	    unsigned char oct2,
-	    unsigned char oct3,
-	    unsigned char oct4)
-	    : octets_{oct1, oct2, oct3, oct4} {
-	}
-
-	const unsigned char*
-	begin() const {
-		return octets_.data();
-	}
-
-	const unsigned char*
-	end() const {
-		return octets_.data() + octets_.size();
-	}
-
-      private:
-	std::array<unsigned char, 4> octets_ = {0, 0, 0, 0};
-};
-
-void tag_invoke(const bj::value_from_tag&, bj::value& jv, Ip_address const& addr) {
-	// Store the IP address as a 4-element array of octets
-	const unsigned char* b = addr.begin();
-	jv                     = {b[0], b[1], b[2], b[3]};
-}
-
-Ip_address
-tag_invoke(const bj::value_to_tag<Ip_address>&, bj::value const& jv) {
-	const auto& arr = jv.as_array();
-	// if (arr.size() != 4) {
-	//        //
-	// }
-	return Ip_address(
-	    arr.at(0).to_number<unsigned char>(),
-	    arr.at(1).to_number<unsigned char>(),
-	    arr.at(2).to_number<unsigned char>(),
-	    arr.at(3).to_number<unsigned char>());
-}
-
 struct Image {
 	std::string path;
 	std::size_t size;
 };
 
-struct Comment {
+struct Like {
 	std::string author;
-	std::string text;
+	uint        timestamp = 0;
+};
+
+struct Comment {
+	std::string       text;
+	uint              timestamp = 0;
+	std::vector<Like> likes;
 };
 
 struct Post {
-	Image                    image;
-	std::string              title;
-	std::vector<std::string> likes;
-	std::vector<Comment>     comment;
-	int                      shares = 0;
+	Image                image;
+	std::vector<Comment> comment;
 };
 
-BOOST_DESCRIBE_STRUCT(Post, (), (title, likes, comment, shares));
-BOOST_DESCRIBE_STRUCT(Comment, (), (author, text));
 BOOST_DESCRIBE_STRUCT(Image, (), (path, size));
+BOOST_DESCRIBE_STRUCT(Like, (), (author, timestamp));
+BOOST_DESCRIBE_STRUCT(Comment, (), (text, timestamp, likes));
+BOOST_DESCRIBE_STRUCT(Post, (), (image, comment));
+
+void extra1(std::vector<Post> posts) {
+	//case 1 very simple
+	auto test = bj::parse(R"([{"extra":"extra"}])");
+
+	auto sub = BOOST_JSON_INTRUSIVE::subtractJson(test, bj::value_from(posts));
+	if (sub) {
+		pretty_print(cout, sub.value());
+	}
+}
+void extra2(std::string raw, std::vector<Post> posts) {
+	auto test = bj::parse(raw);
+	test.set_at_pointer("/0/comment/0/likes/1/extra", "extra");
+	auto sub = BOOST_JSON_INTRUSIVE::subtractJson(test, bj::value_from(posts));
+	if (sub) {
+		pretty_print(cout, sub.value());
+	}
+}
+
+void try_convert(bj::value test) {
+	//I have to think at something better...
+	BOOST_JSON_INTRUSIVE::reset();
+
+	auto l1_try = bj::try_value_to<std::vector<Post>>(test);
+	if (l1_try.has_error()) {
+		cout << std::format("\n\n------\n{}\n{}\n", l1_try.error().message(), BOOST_JSON_INTRUSIVE::getMessage());
+	}
+}
+
+void missing2(std::string raw) {
+	auto test = bj::parse(raw);
+	//next PR will be for delete_at_pointer
+	test.as_array()[0].at("comment").as_array()[0].as_object().erase("timestamp");
+	try_convert(test);
+}
+
+void missing3(std::string raw) {
+	auto test = bj::parse(raw);
+	test.as_array()[0].at("comment").as_array()[0].at("likes").as_array()[1].as_object().erase("author");
+	try_convert(test);
+}
+
+void alter1(std::string raw) {
+	auto test = bj::parse(raw);
+	test.as_array()[0].at("comment").as_array()[0].as_object().erase("timestamp");
+	test.set_at_pointer("/0/comment/0/timestamp", "string");
+	try_convert(test);
+}
 
 int main() {
+	//For the reference one, in the array we need only one sample, here we have 2 just to test
+	std::string raw  = R"(
+[
+    {
+        "image" : {
+            "path" : "https://i.natgeofe.com/n/4f5aaece-3300-41a4-b2a8-ed2708a0a27c/domestic-dog_thumb_square.jpg?wp=1&w=170&h=170",
+            "size" : 9100
+        },
+        "comment" : [
+            {
+                "text" : "this is cool",
+                "timestamp" : 123456,
+                "likes" : [
+                    {
+                        "author" : "Coco",
+                        "timestamp" : 123
+                    },
+                    {
+                        "author" : "Izzy",
+                        "timestamp" : 456
+                    }
+                ]
+            }
+        ]
+    }
+]
 
-	std::vector<Post> post;
+)";
+	auto        json = bj::parse(raw);
+	//TODO we should populate in auto, inserting a value for the array
+	std::vector<Post> posts = bj::value_to<std::vector<Post>>(json);
 
-	Comment c;
-	c.author = "Nancy";
-	c.text   = "this is cool";
+	//detect the extra element
+	//extra1(posts);
+	//extra2(raw, posts);
 
-	Post p;
-	p.comment.push_back(c);
-	p.image.path = "https://i.natgeofe.com/n/4f5aaece-3300-41a4-b2a8-ed2708a0a27c/domestic-dog_thumb_square.jpg?wp=1&w=170&h=170";
-	p.image.size = 9100;
+	//detect missing non optional element
+	missing2(raw);
+	missing3(raw);
 
-	p.likes  = {"Nancy", "Roy", "Coco"};
-	p.shares = 2;
-
-	p.title = "a random dog";
-
-	post.push_back(p);
-
-	auto json = bj::value_from(post);
-
-	pretty_print(cout, json);
-
-	// { //This will detect the extra element
-	// 	auto check = json;
-	// 	check.set_at_pointer("/l2/extra", "extra");
-	// 	auto sub = subtractJson(json.as_object(), bj::value_from(post).as_object());
-	// 	if (!sub.empty()) {
-	// 		pretty_print(cout, sub);
-	// 	}
-	// }
-
-	{
-		//Remove a value and get the error position
-
-		auto check = json;
-		//next PR will be for delete_at_pointer
-		check.as_array()[0].at("comment").as_array()[0].as_object().erase("text");
-
-		pretty_print(cout, check);
-
-		auto l1_try = bj::try_value_to<std::vector<Post>>(check);
-		if (l1_try.has_error()) {
-			cout << format("{}\n{} ", l1_try.error().message(), BOOST_JSON_INTRUSIVE::message);
-			exit(1);
-		}
-	}
-
-	//
-	//    auto original = bj::value_from(m);
-
-	// // //using Md = boost::describe::describe_members<Miao, boost::describe::mod_any_access>;
-	// //inject something unexpected
-	// auto& obj   = json.as_object();
-	// obj["ciao"] = "ciao";
-	// obj["bau"].as_array().push_back(1);
-
-	//
-
-	// cout << bj::serialize(obj) << "\n";
-
-	// //cout << t2.value().x;
-
-	// cout << bj::serialize(res);
-	// ip_address addr = {127, 0, 0, 12};
-	// auto jv   = bj::value_from(addr);
-	// assert(serialize(jv) == R"([127,0,0,12])");
-
-	// Convert back to IP address
-	// auto addr2 = bj::try_value_to<ip_address>(json);
-	// assert(std::equal(
-	//     addr.begin(), addr.end(), addr2.begin()));
+	alter1(raw);
 
 	return 0;
 }
