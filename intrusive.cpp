@@ -169,7 +169,7 @@ BOOST_JSON_INTRUSIVE::BOOST_JSON_INTRUSIVE() {
 
 string BOOST_JSON_INTRUSIVE::getMessage() {
 	if (message.empty()) {
-		return "Error not catched, last json pointer was " + join(path);
+		return "Last json pointer was " + join(path);
 	}
 	return message;
 }

@@ -66,7 +66,12 @@ void try_convert(bj::value test) {
 
 	auto l1_try = bj::try_value_to<std::vector<Post>>(test);
 	if (l1_try.has_error()) {
-		cout << std::format("\n\n------\n{}\n{}\n", l1_try.error().message(), BOOST_JSON_INTRUSIVE::getMessage());
+		cout << std::format(R"(
+
+------
+default msg : {}
+expanded msg: {})",
+		                    l1_try.error().message(), BOOST_JSON_INTRUSIVE::getMessage());
 	}
 }
 
@@ -132,6 +137,8 @@ int main() {
 	missing3(raw);
 
 	alter1(raw);
+
+	cout << endl;
 
 	return 0;
 }
