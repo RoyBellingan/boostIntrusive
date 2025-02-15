@@ -1,7 +1,7 @@
 #ifndef BOOST_JSON_INTRUSIVE_H
 #define BOOST_JSON_INTRUSIVE_H
 
-#include "json/include/boost/json/fwd.hpp"
+#include <boost/json/fwd.hpp>
 #include <string>
 #include <vector>
 #include <optional>
@@ -48,6 +48,5 @@ struct BOOST_JSON_INTRUSIVE {
 #define BOOST_JSON_INTRUSIVE_MESSAGE(x) (BOOST_JSON_INTRUSIVE::message = (x));
 #endif
 
-#include "value_to.hpp"
-//#include "json/include/boost/json/detail/value_to.hpp"
+#include <boost/json/detail/value_to.hpp>
 #endif // BOOST_JSON_INTRUSIVE_H

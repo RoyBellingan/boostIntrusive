@@ -1,6 +1,6 @@
 #include "intrusive.h"
 #include "util.h"
-#include "json/include/boost/json.hpp"
+#include "boost/json.hpp"
 
 #include <format>
 #include <iostream>
